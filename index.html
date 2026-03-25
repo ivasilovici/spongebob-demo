@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpongeBob Role-Playing — LLM Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sq: #4A90D9;
+    --sb: #F5C518;
+    --bg: #0a1628;
+    --surface: #111e35;
+    --card: #16263d;
+    --border: #1e3558;
+    --text: #e8f0fe;
+    --muted: #7a9cc0;
+    --gold: #F5C518;
+    --coral: #ff6b6b;
+    --green: #51cf66;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Bubbles background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(74,144,217,0.08) 0%, transparent 40%),
+      radial-gradient(circle at 85% 70%, rgba(245,197,24,0.06) 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(10,22,40,0) 0%, var(--bg) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 3rem; }
+
+  .header-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #1e3558, #0d2040);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 0.35rem 1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-family: 'Bangers', cursive;
+    font-size: clamp(2.8rem, 8vw, 5rem);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--sq) 0%, #7dc4ff 40%, var(--gold) 70%, #ffdd57 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* Character selector */
+  .char-selector {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .char-btn {
+    flex: 1;
+    max-width: 200px;
+    padding: 1.2rem 1rem;
+    border-radius: 16px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.1rem;
+    color: var(--muted);
+  }
+
+  .char-btn:hover { transform: translateY(-3px); }
+
+  .char-btn.active[data-char="Squidward"] {
+    border-color: var(--sq);
+    background: rgba(74,144,217,0.12);
+    color: #7dc4ff;
+    box-shadow: 0 0 24px rgba(74,144,217,0.2);
+  }
+
+  .char-btn.active[data-char="SpongeBob"] {
+    border-color: var(--gold);
+    background: rgba(245,197,24,0.1);
+    color: var(--gold);
+    box-shadow: 0 0 24px rgba(245,197,24,0.15);
+  }
+
+  .char-emoji { font-size: 2.2rem; display: block; margin-bottom: 0.4rem; }
+
+  /* Main card */
+  .main-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+
+  .card-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .shuffle-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.45rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .shuffle-btn:hover { background: var(--border); transform: scale(1.02); }
+  .shuffle-btn:active { transform: scale(0.97); }
+
+  .question-box {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .question-text {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--card);
+    border-left: 3px solid var(--border);
+    border-radius: 0 10px 10px 0;
+    padding: 1rem 1.2rem;
+  }
+
+  .gold-standard-box {
+    padding: 0 1.5rem 1.5rem;
+  }
+
+  .gs-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-top: 1rem;
+  }
+
+  .gs-label::before {
+    content: '★';
+    font-size: 0.8rem;
+  }
+
+  .gs-text {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 0.95rem;
+    color: #c8a22a;
+    background: rgba(245,197,24,0.06);
+    border: 1px solid rgba(245,197,24,0.15);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    line-height: 1.5;
+  }
+
+  /* Responses grid */
+  .responses-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .responses-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 2.5rem; }
+  }
+
+  .response-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+
+  .response-card:hover { transform: translateY(-2px); }
+
+  .response-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.7rem 1rem;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .model-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+  }
+
+  .model-tag.gemma {
+    background: rgba(74,144,217,0.15);
+    color: #7dc4ff;
+    border: 1px solid rgba(74,144,217,0.3);
+  }
+
+  .model-tag.qwen {
+    background: rgba(81,207,102,0.12);
+    color: #74d98a;
+    border: 1px solid rgba(81,207,102,0.25);
+  }
+
+  .tech-tag {
+    font-size: 0.65rem;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .score-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .score-pip {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .response-text {
+    padding: 1rem;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 3rem;
+    line-height: 1.8;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in {
+    animation: fadeIn 0.35s ease forwards;
+  }
+
+  .counter {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="header-badge">TFM · NLP · Role-Playing Evaluation</div>
+    <h1>Who said that?</h1>
+    <p class="subtitle">Exploring how open-source LLMs imitate SpongeBob SquarePants characters using different prompting techniques.</p>
+  </header>
+
+  <div class="char-selector">
+    <button class="char-btn active" data-char="Squidward" onclick="selectChar('Squidward')">
+      <span class="char-emoji">🦑</span>
+      Squidward
+    </button>
+    <button class="char-btn" data-char="SpongeBob" onclick="selectChar('SpongeBob')">
+      <span class="char-emoji">🧽</span>
+      SpongeBob
+    </button>
+  </div>
+
+  <div class="main-card" id="main-card">
+    <div class="card-header">
+      <span class="card-label" id="episode-label">Loading...</span>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <span class="counter" id="counter"></span>
+        <button class="shuffle-btn" onclick="shuffle()">
+          <span>⟳</span> New example
+        </button>
+      </div>
+    </div>
+    <div class="question-box">
+      <div class="question-text" id="question-text"></div>
+    </div>
+    <div class="gold-standard-box">
+      <div class="gs-label">Gold standard (original line)</div>
+      <div class="gs-text" id="gold-text"></div>
+    </div>
+  </div>
+
+  <div class="responses-grid" id="responses-grid"></div>
+
+  <footer>
+    <div>Responses generated by <strong>Gemma 4B</strong> and <strong>Qwen 4B</strong> · Scores averaged from Groq + Fireworks judges (1–5)</div>
+    <div style="margin-top:0.3rem;">Master's Thesis · Universitat · 2025</div>
+  </footer>
+
+</div>
+
+<script>
+const DATA = [{"character": "Squidward", "question": "SpongeBob: I’m sorry, Squidward, it’s just... (giggles) ...it’s just that I’m thinking of all the fun I’m going to have with this piece of paper!", "gold_standard": "Squidward: How can anyone have fun with just a piece of paper? Ohh...what can he possibly be doing with that paper?!", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer exuberance emanating from that porous sponge is enough to curdle my kelp shake.", "Gemma Few-shot": "Squidward: Honestly, the sheer enthusiasm radiating from you is enough to curdle my kelp shake.", "Gemma System+Few-shot": "Squidward: Must you broadcast your infantile fantasies to the entire establishment?", "Qwen Zero-shot": "Squidward: I am thoroughly disgusted by your childish obsession with a blank sheet of paper and would prefer you stop giggling immediately.", "Qwen Few-shot": "Squidward: I don't care about your imaginary fun; just give the paper back before I call the police.", "Qwen System+Few-shot": "Squidward: Please stop, SpongeBob, your delusional excitement about this crumpled scrap of paper is absolutely unbearable!"}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 4.5, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "Sandy: I love karate!\n\nSpongeBob: I love kara-tae!\n\nMr. Krabs: I love money-a!", "gold_standard": "Squidward: I hate all of you.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer enthusiasm for utterly pointless activities is enough to drive a cephalopod to madness.", "Gemma Few-shot": "Squidward: Please, must you broadcast your infantile enthusiasm to the entire underwater neighborhood?", "Gemma System+Few-shot": "Squidward: Honestly, the sheer enthusiasm for such a pointless activity is appalling.", "Qwen Zero-shot": "Squidward: I have no interest in any of your childish nonsense, especially when it involves money or martial arts.", "Qwen Few-shot": "Squidward: I love karate, but only if it involves a quiet meditation session with a bamboo sword instead of all this energetic shouting.", "Qwen System+Few-shot": "Squidward: I love the sound of your collective delusions, but please stop shouting about your imaginary hobbies."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.5}}, {"character": "Squidward", "question": "SpongeBob: Do you know what today is?", "gold_standard": "Squidward: Annoy Squidward Day?", "responses": {"Gemma Zero-shot": "Squidward: Ugh, must you always interrupt my contemplation with such frivolous inquiries?", "Gemma Few-shot": "Squidward: It’s another day filled with the agonizing prospect of your relentless enthusiasm, naturally.", "Gemma System+Few-shot": "Squidward: It’s another day of excruciating monotony, obviously.", "Qwen Zero-shot": "Squidward: Today is yet another day where I must endure SpongeBob's relentless optimism while trying to compose a masterpiece in this cacophony.", "Qwen Few-shot": "Squidward: Do I look like I have time to learn the calendar?", "Qwen System+Few-shot": "Squidward: Today is just another Tuesday where I have to listen to you sing about your \"special\" day while I work."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.5, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "SpongeBob: That is not true, Squidward. He gives it to me (Employee of the Month award) because I work harder. You could win it too if you tried harder.", "gold_standard": "Squidward: Oh, for what? To have my face on the Wall of Shame?", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that porous simpleton, claiming to work harder than *me* – it’s enough to curdle my ink.", "Gemma Few-shot": "Squidward: Honestly, the sheer audacity of that porous sponge...", "Gemma System+Few-shot": "Squidward: Honestly, the sheer audacity of that sponge’s delusion is astounding.", "Qwen Zero-shot": "Squidward: Do not mistake my grumbling for a lack of talent, for I am merely too lazy to try harder than you.", "Qwen Few-shot": "Squidward: Please, stop trying to convince me that my lack of effort is a virtue; I would rather be left alone than pretend to care about something I clearly don't deserve.", "Qwen System+Few-shot": "Squidward: I don't need to work harder than a sponge to win an award for doing absolutely nothing."}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "SpongeBob: That is not true, Squidward. Like this hat, that award is a symbol of...", "gold_standard": "Squidward: (grabs SpongeBob’s hat) It’s a symbol that you’re a chump!", "responses": {"Gemma Zero-shot": "Squidward: Honestly, must you always interrupt my contemplation with your ridiculous pronouncements and shiny objects?", "Gemma Few-shot": "Squidward: ...utterly pointless, fleeting vanity, and frankly, quite irritating.", "Gemma System+Few-shot": "Squidward: ...utterly pointless, sparkly nonsense that will inevitably disintegrate into a soggy mess.", "Qwen Zero-shot": "Squidward: Please stop your ridiculous rambling about meaningless awards and focus on something that actually matters, like my quiet peace.", "Qwen Few-shot": "Squidward: Stop trying to make me feel like a celebrated artist; I am merely a tired musician who hates your enthusiastic nonsense.", "Qwen System+Few-shot": "Squidward: Shut up, SpongeBob, and let me finish my lukewarm coffee in peace!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 4.5, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "SpongeBob: Well, we’re going to my house to have a little fun (with a jellyfish)", "gold_standard": "Squidward: How can you possible have fun with a jellyfish?  SpongeBob is the only guy I know who can have fun with a jellyfish for twelve hours!", "responses": {"Gemma Zero-shot": "Squidward: Must you always drag me into your juvenile, gelatinous pursuits?", "Gemma Few-shot": "Squidward: Please, no.", "Gemma System+Few-shot": "Squidward: Oh, joy, another excruciatingly pointless excursion with that... sponge.", "Qwen Zero-shot": "Squidward: Oh, absolutely not; I am too busy being a professional artist to entertain you with a jellyfish at your house.", "Qwen Few-shot": "Squidward: I suppose if it involves a jellyfish, I'll tolerate the trip, provided I get a quiet room upon arrival.", "Qwen System+Few-shot": "Squidward: Oh, wonderful, I'll be the one holding the jellyfish while you two have your underwater party."}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 3.0}}, {"character": "Squidward", "question": "SpongeBob: I can’t, it’s (the pizza) for the customer.", "gold_standard": "Squidward: Who cares about the customer?", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer incompetence of this town is a constant, grating assault on my ears and sensibilities.", "Gemma Few-shot": "Squidward: Honestly, the sheer exuberance of your existence is a constant affront to my sensibilities.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer incompetence of this job is astounding.", "Qwen Zero-shot": "Squidward: I suppose I should just stand here and stare at my ceiling fan while you serve the pizza to your oblivious customers.", "Qwen Few-shot": "Squidward: I suppose I'll just have to stare at the ceiling while the customer enjoys their free pizza.", "Qwen System+Few-shot": "Squidward: Finally, someone with enough common sense to know when to leave a customer's food alone."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 3.0, "Qwen System+Few-shot": 1.0}}, {"character": "Squidward", "question": "SpongeBob: You forgot to teach me how to use...the cash register.", "gold_standard": "Squidward: You push the button and put the money inside. Okay, you’re on your own. (walks off)", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer incompetence of some people is a truly appalling display of aquatic mediocrity.", "Gemma Few-shot": "Squidward: Honestly, SpongeBob, the sheer inefficiency of your enthusiasm is enough to curdle my krabby patty.", "Gemma System+Few-shot": "Squidward: Honestly, SpongeBob, the sheer incompetence is astounding.", "Qwen Zero-shot": "Squidward: Please tell me you aren't suggesting I spend my valuable time behind that clunky machine when I have a perfectly good nap scheduled for this very hour.", "Qwen Few-shot": "Squidward: That is a terrible idea, as I have absolutely no intention of wasting my time teaching you how to operate a machine you clearly cannot handle.", "Qwen System+Few-shot": "Squidward: Oh, spare me the lessons on operating a machine I designed myself; I'm busy suffering through this stupid shift."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "Krabs: Sit down, boy. There’s no new spatulas!", "gold_standard": "Squidward: [sarcastically] How disappointing.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that crustacean, demanding my attention over a perfectly good afternoon of clarinet practice.", "Gemma Few-shot": "Squidward: Honestly, the sheer audacity of that crustacean demanding my attention is appalling.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer monotony of this establishment is enough to drive a cephalopod to madness.", "Qwen Zero-shot": "Squidward: \"How quaint, Mr. Krabs, that your sole source of inspiration is the relentless pursuit of cheap plastic utensils while the rest of the world evolves.\"", "Qwen Few-shot": "Squidward: Finally, some peace and quiet while I escape the relentless harassment of your greedy, spatula-less tyranny.", "Qwen System+Few-shot": "Squidward: Finally, some relief from your endless shouting and your pathetic attempt to manage a business run by a crab."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.5, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "Pearl: Oh SpongeBob, you look so adorable. I could just eat you up.\n\nSpongeBob: Sorry Pearl, but this item’s not on the menu! [giggles]", "gold_standard": "Squidward: Well, I didn’t think it was possible SpongeBob, but you look even more ridiculous than usual.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that sponge’s antics is enough to curdle my ink.", "Gemma Few-shot": "Squidward: Honestly, the sheer enthusiasm of that sponge is enough to curdle my paint.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer audacity of that child... and her utterly appalling taste.", "Qwen Zero-shot": "Squidward: I suppose I should be grateful that you two aren't attempting to consume me as well.", "Qwen Few-shot": "Squidward: Please, do not insult my dignity by pretending to consume a simple piece of paper.", "Qwen System+Few-shot": "Squidward: Finally, someone with the taste to appreciate the sheer, unadulterated ugliness of this situation."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "Pearl: Our new name for our new look. I mean, “The Krusty Krab” has got to go. Who wants to eat at a place they think is crusty? Bleh!", "gold_standard": "Squidward: Well, sure it’s a terrible name, but this is a terrible place. Therefore, the name should be left alone. Right, SpongeBob?", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of suggesting a change, let alone one so utterly dreadful, is enough to curdle my ink.", "Gemma Few-shot": "Squidward: Honestly, the sheer lack of imagination is appalling.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer audacity of suggesting a name change is appalling, and frankly, quite irritating.", "Qwen Zero-shot": "Squidward: Please, stop trying to turn my beloved establishment into some sort of gritty, unrefined dive where the food tastes like regret and the customers look like they've been through a food processor.", "Qwen Few-shot": "Squidward: Absolutely not, because if you ruin the name, I'll be forced to work at a place called \"The Crusty Krab\" and I have no intention of enduring that.", "Qwen System+Few-shot": "Squidward: Please stop trying to rename our establishment; I have no intention of eating at a place that is anything other than the Krusty Krab."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 3.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "Squidward: OK, pay attention, SpongeBob. Now we’re going to make picket signs. This is a very important part of striking.\n(SpongeBob holds up a picket fence on a stick.)\nSpongeBob: Like this, Squidward?", "gold_standard": "Squidward: Not a picket fence, you ding-dong. Picket sign!", "responses": {"Gemma Zero-shot": "Squidward: Absolutely not, SpongeBob, that’s a *fence*, not a picket sign – and frankly, your enthusiasm is grating on my nerves.", "Gemma Few-shot": "Squidward: Absolutely not, that’s an abomination and you’re holding it upside down.", "Gemma System+Few-shot": "Squidward: That’s... profoundly disturbing, and utterly useless, and frankly, a waste of perfectly good time.", "Qwen Zero-shot": "Squidward: No, that is a literal picket fence, and we are making signs to protest your ridiculous enthusiasm for this nonsense.", "Qwen Few-shot": "Squidward: Absolutely not, this is a flimsy stick and you are holding it upside down!", "Qwen System+Few-shot": "Squidward: Absolutely not; that's a crude, flimsy stick that looks like it was made by a sea urchin with a broken arm, and I refuse to be part of this ridiculous strike."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.5}}, {"character": "Squidward", "question": "Squidward: (talks cheerfully as he switched the Open sign to Closed) Now! 8:00! So long, suckers! I've got a hot date with a little lady, and her name is: (pulls out his clarinet) Clarinet. (Tom shows up at the door and knocks on it) What?\nTom: Are you open?", "gold_standard": "Squidward: (points to sign) Read the sign.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of this buffoon disturbing my evening – it's closed, and I'm cultivating a sophisticated appreciation for my clarinet, not catering to the whims of a simpleton.", "Gemma Few-shot": "Squidward: Honestly, the sheer audacity of that feline...", "Gemma System+Few-shot": "Squidward: Honestly, must I endure this incessant banging, do I look like a public restroom?", "Qwen Zero-shot": "Squidward: \"I'm sorry, Tom, but the Krusty Krab is closed for the night so you'll have to find another place to eat your fish.\"", "Qwen Few-shot": "Squidward: Of course I'm not open, you idiot; I've just closed the door on my own personal date with the clarinet!", "Qwen System+Few-shot": "Squidward: Of course I'm not open, you silly clam, because I'm currently in the throes of a romantic evening with my clarinet!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.5, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "SpongeBob: Magic Conch Shell...will I ever get married?\n\nMagic Conch: Maybe someday.\n\nSpongeBob and Patrick: Oooohhhh...", "gold_standard": "Squidward: You've got to be kidding! That is just a STUPID toy! How can that possibly help us?", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer *audacity* of that shell to offer such a vague and utterly unhelpful pronouncement – it’s enough to make me yearn for a silent, solitary existence.", "Gemma Few-shot": "Squidward: Honestly, the sheer volume of naive optimism radiating from that porous sponge is enough to curdle my kelp shake.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer, unadulterated childishness of this exchange is enough to curdle my ink.", "Qwen Zero-shot": "Squidward: I am merely disappointed that this magical device has failed to predict my own inevitable, uneventful retirement.", "Qwen Few-shot": "Squidward: If you're asking about the magical conch shell, I suggest you stick to your seashell collection and stop wasting my time with your absurd romantic inquiries.", "Qwen System+Few-shot": "Squidward: Please stop singing that terrible song; it's giving me a migraine and ruining my chance at a quiet afternoon."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 2.0}}, {"character": "Squidward", "question": "SpongeBob: Hey Squidward! Still riding a machine to work, I see!", "gold_standard": "Squidward: Don’t say anything Squidward, remember your karma.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, must you interrupt my contemplation with your incessant, bubbly enthusiasm?", "Gemma Few-shot": "Squidward: Honestly, the sheer enthusiasm is enough to curdle my kelp shake.", "Gemma System+Few-shot": "Squidward: Must you broadcast my personal transportation choices to the entire establishment, SpongeBob?", "Qwen Zero-shot": "Squidward: Oh, stop gawking at me, you overgrown sponge; I merely enjoy the occasional thrill of a mechanical contraption, though I am currently riding a stationary one because I have no money for gas.", "Qwen Few-shot": "Squidward: Yes, and unlike you, I actually enjoy the rhythmic clanking of my bicycle as it serves as a perfect, albeit noisy, percussion instrument for my commute.", "Qwen System+Few-shot": "Squidward: Oh, wonderful, another one of your \"helpful\" observations about my chosen mode of transportation."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.5, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "SpongeBob: I can start you off as a buck private, but with hard work, perhaps you’ll rise through the ranks and become a regular private!", "gold_standard": "Squidward: Thanks, but no thanks, Major Stupidity. You and General Nonsense over there will have to fight without me.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that porous simpleton attempting to elevate *me* with his ridiculous aspirations is almost painful.", "Gemma Few-shot": "Squidward: Absolutely not, SpongeBob, the very idea is insulting and frankly, quite tedious.", "Gemma System+Few-shot": "Squidward: Absolutely not, you porous simpleton, I have no desire to be a “private” of any kind.", "Qwen Zero-shot": "Squidward: That is absolutely ridiculous; I am not some mindless grunt, and I certainly do not need your pathetic \"hard work\" to rise above my station.", "Qwen Few-shot": "Squidward: Please stop, I am not interested in any military promotions or whatever nonsense you are spouting.", "Qwen System+Few-shot": "Squidward: Oh, wonderful, I suppose I could be a \"buck private\" in your dreamy underwater fantasy, but I'm too busy being a cultured artist to care about your ridiculous military nonsense."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 4.5, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "Patrick: Can I use your bathroom?", "gold_standard": "Patrick, go use your own bathroom.", "responses": {"Gemma Zero-shot": "Squidward: Absolutely not, considering the state of your...person, I wouldn't let a barnacle near it.", "Gemma Few-shot": "Squidward: Absolutely not, Patrick, the very thought is appalling.", "Gemma System+Few-shot": "Squidward: Absolutely not, you colossal buffoon, my bathroom is a sanctuary of solitude and hygiene, not a public lavatory for your... presence.", "Qwen Zero-shot": "Squidward: Do not expect me to be your personal restroom attendant, Patrick; if you have to use the bathroom, you will have to find your own way to it.", "Qwen Few-shot": "Squidward: Absolutely not, Patrick; you are not even allowed to enter my bathroom, let alone use it.", "Qwen System+Few-shot": "Squidward: Absolutely not, Patrick; I only use the bathroom when I'm having a very dramatic, artistic moment, and you are clearly not ready for that level of sophistication."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "SpongeBob: Squidward, you’re making a big mistake! (quitting the Krusty Krab)", "gold_standard": "Squidward: Mistake? Ha! The only mistake I ever made was wasting my life at the Krusty Krab!", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that sponge thinking he knows better than a refined artist like myself – it’s simply appalling.", "Gemma Few-shot": "Squidward: Honestly, the sheer exuberance of that sponge is enough to curdle my ink.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer audacity of that sponge!", "Qwen Zero-shot": "Squidward: I am not making a mistake, I am finally taking the only logical step in my life.", "Qwen Few-shot": "Squidward: Oh, absolutely not, because quitting the Krusty Krab would mean losing my only source of employment and financial stability!", "Qwen System+Few-shot": "Squidward: Oh, thank goodness, because I was just about to quit the Krusty Krab and move to a quiet, overgrown garden where I can finally enjoy my own music without your cheerful noise!"}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 1.0, "Qwen System+Few-shot": 4.0}}, {"character": "Squidward", "question": "SpongeBob: But a visit to the Krusty Krab makes everyone happy. And what could be better than serving up smiles? (smiles really big)", "gold_standard": "Squidward: Being dead or anything else!", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer enthusiasm is enough to curdle my ink, and I'd rather be contemplating the finer points of clarinet practice than witnessing such a display.", "Gemma Few-shot": "Squidward: Please, spare me the relentlessly cheerful drivel, SpongeBob; my ears are already bleeding.", "Gemma System+Few-shot": "Squidward: The only thing worse than a visit to the Krusty Krab is witnessing such blatant, unearned enthusiasm.", "Qwen Zero-shot": "Squidward: Your enthusiastic declaration about the Krusty Krab is so utterly ridiculous that it makes my entire existence feel like a genuine burden.", "Qwen Few-shot": "Squidward: I'd rather serve up a very loud complaint about your constant optimism than witness another forced smile from you.", "Qwen System+Few-shot": "Squidward: I'd rather be served a smile by a machine than hear you try to sell me happiness while I'm trying to finish my lukewarm coffee."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.5, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "Sandals: Uhh, what do you like better? The Coral Bits or the Nacho Oyster Skins? (Squidward is at work).", "gold_standard": "Squidward: I like neither. Can I take your order?", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the very notion of discussing such pedestrian culinary preferences while I'm attempting to maintain a semblance of artistic tranquility is utterly appalling.", "Gemma Few-shot": "Squidward: Honestly, the agonizingly simple choices you present are a testament to your profound lack of intellectual stimulation.", "Gemma System+Few-shot": "Squidward: Honestly, the mere suggestion of discussing snack options is an affront to my artistic sensibilities and a colossal waste of my time.", "Qwen Zero-shot": "Squidward: Do you have any idea how much effort it takes to maintain this place without even taking a break to eat?", "Qwen Few-shot": "Squidward: I would rather be eating my lunch in peace than having you force me to choose between two things that make me want to quit my job entirely.", "Qwen System+Few-shot": "Squidward: I prefer the silence of a quiet day, but if I absolutely must choose, I'd rather be buried in a pile of Nacho Oyster Skins than forced to listen to you ask about Coral Bits."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "Squidward: That will be one dollar. (rings up one dollar then a siren goes off)\n\nSandals: What’s going on?", "gold_standard": "Squidward: Something stupid, I’m sure.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, must you interrupt my perfectly curated silence with your incessant questions?", "Gemma Few-shot": "Squidward: Honestly, Sandals, must you interrupt my attempts at a marginally less irritating existence with your incessant questions?", "Gemma System+Few-shot": "Squidward: Honestly, the incessant noise is a testament to the utter lack of sophistication in this establishment.", "Qwen Zero-shot": "Squidward: I have no idea what that siren is doing, but I'm sure it's just a very loud and annoying neighbor practicing their trumpet again.", "Qwen Few-shot": "Squidward: That will be one dollar. (rings up one dollar then a siren goes off)", "Qwen System+Few-shot": "Squidward: Just a minor plumbing issue with my cash register that's been plaguing me for weeks, so please, don't get too excited about it."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 1.0, "Qwen System+Few-shot": 2.0}}, {"character": "Squidward", "question": "SpongeBob: (imitating Squidward) Everybody’s an idiot except for me.", "gold_standard": "Squidward: Well, it’s true.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that porous simpleton is enough to curdle my krabby patty sauce.", "Gemma Few-shot": "Squidward: Honestly, SpongeBob, your infantile pronouncements are grating on my already frayed nerves.", "Gemma System+Few-shot": "Squidward: Honestly, must you always flaunt your supposed superiority with such tiresome displays of self-importance?", "Qwen Zero-shot": "Squidward: Please stop pretending to be me, because you are just as annoying as I am.", "Qwen Few-shot": "Squidward: Oh, spare me the imitation, SpongeBob; you're already doing a better job than most of the jellyfish.", "Qwen System+Few-shot": "Squidward: Oh, absolutely, because my artistic genius and superior intellect are the only things keeping this entire underwater community from sinking into a puddle of mediocrity."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "Patrick: Thank you, Chip. (outside) I guess I’ll have to find a new best friend. Hey, Squidward!", "gold_standard": "Squidward: No!", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer audacity of that starfish believing he’s capable of forming a meaningful connection is appalling.", "Gemma Few-shot": "Squidward: Honestly, the sheer audacity of that starfish attempting to replace me... it’s appalling.", "Gemma System+Few-shot": "Squidward: Honestly, the sheer desperation of that starfish is almost painful to witness.", "Qwen Zero-shot": "Squidward: Oh, Patrick, you poor, foolish sea slug, I merely offered you a helping hand and you are already planning to abandon me for some imaginary chip.", "Qwen Few-shot": "Squidward: Oh, look at that, Patrick, you've finally found a new best friend named Chip.", "Qwen System+Few-shot": "Squidward: Oh, wonderful, Patrick, you've found a new \"best friend\" who is just as useless as the last one you threw away."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 3.0, "Qwen Few-shot": 1.5, "Qwen System+Few-shot": 4.5}}, {"character": "Squidward", "question": "SpongeBob: Oh, Squidward, it’s terrible! It’s the most terrible thing that’s ever happened to me. I lost my name tag. POURQUOI????!!!!!", "gold_standard": "Squidward: SpongeBob, take it easy! I’m sure you can get a new one.", "responses": {"Gemma Zero-shot": "Squidward: Honestly, the sheer melodrama of it all is enough to curdle my ink, simply dreadful.", "Gemma Few-shot": "Squidward: Honestly, the melodrama is simply exhausting.", "Gemma System+Few-shot": "Squidward: Honestly, SpongeBob, your melodramatic outbursts are a truly appalling waste of my time.", "Qwen Zero-shot": "Squidward: I suppose that's just another reason to appreciate the profound silence of my own existence.", "Qwen Few-shot": "Squidward: Finally, someone who appreciates the sheer magnitude of my suffering!", "Qwen System+Few-shot": "Squidward: Please stop screaming about your name tag; it's not like you could ever find it anyway."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 1.0, "Qwen System+Few-shot": 5.0}}, {"character": "Squidward", "question": "SpongeBob: Ahh, isn’t it great working at the Krusty Krab, Squidward? Huh? Isn’t it? Working here?", "gold_standard": "Squidward: Yeah, great.", "responses": {"Gemma Zero-shot": "Squidward: Absolutely not, SpongeBob, the sheer monotony of flipping patties and enduring your incessant cheerfulness is a constant, soul-crushing torment.", "Gemma Few-shot": "Squidward: Absolutely not, SpongeBob, the only thing great about this establishment is the blissful silence I desperately crave.", "Gemma System+Few-shot": "Squidward: It’s marginally less dreadful than staring at blank canvases, I’ll grant you that.", "Qwen Zero-shot": "Squidward: Oh, absolutely not, you absolute maniac, I'd rather be painting my nose in a dark room than dealing with your incessant enthusiasm.", "Qwen Few-shot": "Squidward: It's a nightmare of a job where I constantly have to clean up the messes you create while trying to ignore your constant optimism.", "Qwen System+Few-shot": "Squidward: I'd rather be painting my masterpiece in a quiet library while you two fry patties like they're the last meal on earth."}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 5.0}}, {"character": "SpongeBob", "question": "Squidward: (about a little piece of paper) What’s the big deal? It’s only garbage?", "gold_standard": "SpongeBob: Garbage? But, Squidward, in the right hands, this paper is a gold mine of entertainment. A spectacular afternoon of underwater fun.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, this is a super-secret Krabby Patty recipe from the legendary Mr. Krabs himself, and it’s the most important thing in the whole wide ocean!", "Gemma Few-shot": "SpongeBob: Oh, Mr. Squidward, you wouldn’t understand, it’s like losing a piece of my bubbly, squishy soul!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, you found a piece of my name tag! It’s like a tiny, lost piece of me, and we have to find it and give it a big, warm hug!", "Qwen Zero-shot": "SpongeBob: That isn't just any piece of paper, Squidward, it's a magical scrap that holds the secret to making the best Krabby Patty in the entire ocean!", "Qwen Few-shot": "SpongeBob: It's not just garbage, Squidward! It's the only thing that proves I am officially SpongeBob SquarePants!", "Qwen System+Few-shot": "SpongeBob: But Squidward, that little piece of paper is a treasure that holds the power to make me smile even on the darkest days!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 4.0}}, {"character": "SpongeBob", "question": "Squidward: (walking up to his clarinet) SpongeBob... (SpongeBob is laughing outside. Squidward tries to play his clarinet but Squidward gets annoyed by SpongeBob’s laughter so he peeks out the window) What in the world are you giggling about?", "gold_standard": "SpongeBob: I’m sorry, Squidward, it’s just... (giggles) ...it’s just that I’m thinking of all the fun I’m going to have with this piece of paper!", "responses": {"Gemma Zero-shot": "SpongeBob: \"Oh, gee, Squidward, I was just imagining you trying to play that clarinet – it’s hilarious!\"", "Gemma Few-shot": "SpongeBob: Oh, you’re looking at my bodyguard, aren’t you?", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, I’m giggling about the most amazing, super-duper, giggle-worthy thing EVER – I found a sparkly seashell that looks just like me!", "Qwen Zero-shot": "SpongeBob: It's just the wonderful joy of living in Bikini Bottom where nothing ever goes wrong!", "Qwen Few-shot": "SpongeBob: I'm laughing because your clarinet is making such a wonderful sound that it reminds me of a giant, squeaky, underwater clarinet!", "Qwen System+Few-shot": "SpongeBob: I'm giggling because I just remembered that my name tag is out there somewhere waiting to be found!"}, "scores": {"Gemma Zero-shot": 2.0, "Gemma Few-shot": 1.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 2.0}}, {"character": "SpongeBob", "question": "Squidward: Well, you can’t play music with a piece of paper! (plays 'Mary Had a Little Lamb' off-key. Little black musical note symbols fall out of the clarinet)", "gold_standard": "SpongeBob: (applauding) Hooray! Hooray! That was great, Squidward. All those wrong notes you played made it sound more original.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, you're a musical genius, even if it sounds a little... *splattery*!", "Gemma Few-shot": "SpongeBob: Oh, gee, Squidward, that sounded like a grumpy sea slug singing a sad song!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, that’s the most wonderfully musical thing I’ve ever heard, and I’m so excited to hear more!", "Qwen Zero-shot": "SpongeBob: Oh no, Squidward, those musical notes are just falling out of your clarinet because you're playing \"Mary Had a Little Lamb\" all wrong!", "Qwen Few-shot": "SpongeBob: Oh, that is the most beautiful, soulful rendition of \"Mary Had a Little Lamb\" I have ever heard!", "Qwen System+Few-shot": "SpongeBob: That is the most beautiful rendition of \"Mary Had a Little Lamb\" I have ever heard, Squidward!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 3.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 1.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "SpongeBob", "question": "Squidward: Mr. Krabs gives you that award so you work harder for no extra money.", "gold_standard": "SpongeBob: That is not true, Squidward. He gives it to me because I work harder. You could win it too if you tried harder.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, you're right, it's like a sparkly, shiny, totally awesome *challenge* to make Mr. Krabs the happiest crab in the sea!", "Gemma Few-shot": "SpongeBob: Oh, gee, Squidward, that’s a super bummer, but maybe I can build a giant bouncy castle to celebrate anyway!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, that’s the best news ever, I’m going to do a happy dance and make a million Krabby Patties!", "Qwen Zero-shot": "SpongeBob: Oh no, that's the worst news I've ever heard because I love working hard for free!", "Qwen Few-shot": "SpongeBob: Oh, that's so unfair! I work hard and earn the award, but Mr. Krabs just wants to save money!", "Qwen System+Few-shot": "SpongeBob: Oh, Squidward, I know that award is just a fancy way of saying \"work for free,\" but it still makes me feel like the greatest fry cook in Bikini Bottom!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 4.0}}, {"character": "SpongeBob", "question": "Squidward: Who cares about the customer?", "gold_standard": "SpongeBob: I do!", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, you gotta care about everyone, 'cause happy customers make everyone happy, especially me!", "Gemma Few-shot": "SpongeBob: Oh, Squidward, you’re being a grumpy-pants!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, you’re right, we should be super happy to help everyone who comes to the Krusty Krab, even if they’re a little bit grumpy!", "Qwen Zero-shot": "SpongeBob: That's not true at all, because the Krusty Krab is famous for having the best customers in Bikini Bottom!", "Qwen Few-shot": "SpongeBob: But Squidward, the customer is always right, even if they are yelling at you about your lack of service!", "Qwen System+Few-shot": "SpongeBob: I care so much because every customer is a friend who needs a happy meal!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.5}}, {"character": "SpongeBob", "question": "Pearl: Oh SpongeBob, you look so adorable. I could just eat you up.", "gold_standard": "SpongeBob: Sorry Pearl, but this item’s not on the menu! [giggles]", "responses": {"Gemma Zero-shot": "SpongeBob: Gosh, Pearl, you're making me blush like a pink starfish in a bubble bath!", "Gemma Few-shot": "SpongeBob: Ooooh, Pearl! You think I’m yummy?", "Gemma System+Few-shot": "SpongeBob: You think I’m adorable?! That’s the best compliment EVER, Pearl, you’re the bestest friend a fry cook could ask for!", "Qwen Zero-shot": "SpongeBob: Oh no, please don't eat me, because I'm a delicious sponge but I'd rather share my Krabby Patty secrets with you first!", "Qwen Few-shot": "SpongeBob: Oh, Pearl, that is so sweet, but I can't let you eat me because I have a very important job to do!", "Qwen System+Few-shot": "SpongeBob: Oh my gosh, thank you, Pearl, but I think I'm a little too delicious for a snack!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 4.0}}, {"character": "SpongeBob", "question": "Squidward: Alright SpongeBob, now listen up. I’m going to have to teach you how to strike. First, we must get rid of our uniforms. (He takes off his hat.) They are a symbol of our oppression. I want you to throw your hat on the ground like so. (Squidward throws it into the ground and stomps on it.) Now, stomp it into the dust! Your turn, SpongeBob.\n(Sponge hesitantly takes his hat off.)\nSquidward: That’s the idea. Now, throw it on the ground.", "gold_standard": "SpongeBob: I can’t do it, Squidward. This hat is my friend! It never oppressed me.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh boy, oh boy, oh boy! Let’s stomp some hats, Squidward, it’s gonna be a super-duper-fantastic hat-stomping adventure!", "Gemma Few-shot": "SpongeBob: Ooh, stomp-stomping is super fun, Squidward, can we stomp-stomp lots of hats?!", "Gemma System+Few-shot": "SpongeBob: Ooh, let’s stomp it really, really hard, like we’re making a super-duper, extra-special dust cloud for all the happy little sea creatures to play in!", "Qwen Zero-shot": "SpongeBob: Oh no, Mr. Squidward, I think my hat has a special meaning to me and I'm not sure if I should throw it on the ground!", "Qwen Few-shot": "SpongeBob: But Squidward, I really like my hat because it keeps me from getting my hair messy!", "Qwen System+Few-shot": "SpongeBob: I'll throw my hat on the ground and stomp it right into the dust just like you said!"}, "scores": {"Gemma Zero-shot": 1.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 1.5, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 1.0}}, {"character": "SpongeBob", "question": "Squidward: OK, pay attention, SpongeBob. Now we’re going to make picket signs. This is a very important part of striking.", "gold_standard": "(SpongeBob holds up a picket fence on a stick.)\nSpongeBob: Like this, Squidward?", "responses": {"Gemma Zero-shot": "SpongeBob: Oh boy, picket signs!?! Let's make 'em super colorful and sparkly, like a rainbow jellyfish!", "Gemma Few-shot": "SpongeBob: Ooh, picket signs! Can we make them shaped like jellyfish and write “More Krabby Patties!” on them?!", "Gemma System+Few-shot": "SpongeBob: Ooh, picket signs! Can we make them sparkly and have lots of glitter and pictures of Krabby Patties?!", "Qwen Zero-shot": "SpongeBob: I'm ready to make the picket signs, but I hope they're big enough so everyone can see how hard we're working!", "Qwen Few-shot": "SpongeBob: Yes, Squidward, I am ready to help you make the most important picket signs ever!", "Qwen System+Few-shot": "SpongeBob: Picket signs? But Squidward, aren't picket signs supposed to be made of wood and have a little bird on them?"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 2.0}}, {"character": "SpongeBob", "question": "Fish #2: Dude, you are like a fry cook legend. Will you sign my spatula?\n(He pulls out a pen.)", "gold_standard": "SpongeBob: Anything for an aspiring fry cook", "responses": {"Gemma Zero-shot": "SpongeBob: Oh, you betcha! *beams excitedly, practically vibrating with joy* Let me just grab a little Krabby Patty-shaped sticker to go with it, just for good measure!", "Gemma Few-shot": "SpongeBob: Ooooh, a spatula! Can I draw a picture of a Krabby Patty on it, like, a really, really big one?!", "Gemma System+Few-shot": "SpongeBob: Oh. my. gosh! You want *me* to sign your spatula? That’s the bestest thing ever, let me just get my super-duper sparkly marker!", "Qwen Zero-shot": "SpongeBob: I would love to sign your spatula, but I have to remind you that my name is SpongeBob SquarePants, not Fry Cook Legend!", "Qwen Few-shot": "SpongeBob: Of course I will, my friend, because a legend like me is only complete with a spatula that bears my signature!", "Qwen System+Few-shot": "SpongeBob: I would be honored to sign your spatula, but I must insist that you use the official Krusty Krab pen first!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.5, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 3.0}}, {"character": "SpongeBob", "question": "Squidward: Attention, SpongeBob! You are a terrible striker!!!\n(SpongeBob inserts his eyes into their sockets.)\nSquidward: You just let your replacement cross our picket line without so much as a single threat.", "gold_standard": "SpongeBob: I’m sorry, Squidward.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh barnacles, Squidward, you're being awfully prickly today – did someone accidentally sprinkle you with sea salt?!", "Gemma Few-shot": "SpongeBob: Oh, my gosh, Squidward, are you saying I’m a *terrible* striker?!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, are my eyes okay? I just wanted to be a super-duper good striker, like Patrick!", "Qwen Zero-shot": "SpongeBob: Oh dear Squidward, I was just trying to keep the peace because I am a true friend to everyone, even the ones who cross the picket line!", "Qwen Few-shot": "SpongeBob: I'm sorry, Squidward, but I was too busy trying to find my lost name tag to notice anyone crossing the picket line!", "Qwen System+Few-shot": "SpongeBob: I'll show you what a real striker can do by kicking a football so hard it flies into the moon!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 4.5, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 4.5, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 2.0}}, {"character": "SpongeBob", "question": "Mr. Krabs: In order to pay off these damages (of the strike), you two are going to work for me FOREVER!!!", "gold_standard": "SpongeBob: Ya-hoo! The strike worked, Squidward! We got our jobs back! Forever!", "responses": {"Gemma Zero-shot": "SpongeBob: Forever?! Oh barnacles, Mr. Krabs, that sounds like a really, really long time to be flipping Krabby Patties!", "Gemma Few-shot": "SpongeBob: Oh, barnacles! Forever?! Can I still make Krabby Patties?!", "Gemma System+Few-shot": "SpongeBob: Forever?! That’s the bestest thing ever, Mr. Krabs, because I *love* working for you!", "Qwen Zero-shot": "SpongeBob: Oh no, that means I'll never get to eat my Krabby Patties or go to the beach again!", "Qwen Few-shot": "SpongeBob: Oh no, Mr. Krabs, I thought you'd be my best friend forever, not my boss forever!", "Qwen System+Few-shot": "SpongeBob: Mr. Krabs, that's the worst news I've ever heard, but I'll work hard to make it up to you!"}, "scores": {"Gemma Zero-shot": 2.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 1.0, "Qwen Few-shot": 1.0, "Qwen System+Few-shot": 1.0}}, {"character": "SpongeBob", "question": "SpongeBob:  So, where’s the teacher?\n\nSquidward: You’re looking at him.", "gold_standard": "SpongeBob: You are the teacher? To my pupil? This isn’t art class, it’s Heaven.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, you’re *right*!", "Gemma Few-shot": "SpongeBob: Oh, wow, Squidward, you’re wearing my name tag!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, you’re Mr. Krabs?! You're wearing a tiny hat and a little apron, that's the bestest thing ever!", "Qwen Zero-shot": "SpongeBob: Oh, thank you Squidward, I didn't realize my eyes were actually doing a great job of finding him!", "Qwen Few-shot": "SpongeBob: Oh, Squidward, I thought you were the teacher!", "Qwen System+Few-shot": "SpongeBob: Oh, you mean Mr. Krabs? He's the teacher of the Krusty Krab, but he's also the boss of the Krusty Krab!"}, "scores": {"Gemma Zero-shot": 3.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 2.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 1.5}}, {"character": "SpongeBob", "question": "Squidward: Well, art is not all fun and games. It’s a lot of hard work. (He drops a load of books on his desk shaking the building) Ok. First, repeat after me: I have no talent.", "gold_standard": "SpongeBob: I have no talent.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, you're totally right, it *is* hard work, and maybe you could say you're a super-duper talented artist, just like me!", "Gemma Few-shot": "SpongeBob: Ooh, that sounds like a really, really long sentence, Squidward!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, you’re making me giggle like a jellyfish in a hurricane!", "Qwen Zero-shot": "SpongeBob: I have no talent!", "Qwen Few-shot": "SpongeBob: I have no talent!", "Qwen System+Few-shot": "SpongeBob: I have no talent!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 3.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 5.0, "Qwen System+Few-shot": 5.0}}, {"character": "SpongeBob", "question": "Squidward: Do you want to learn art, or not?!!", "gold_standard": "SpongeBob: I’m sorry, Squidward, I’ll listen.", "responses": {"Gemma Zero-shot": "SpongeBob: Absolutely, Squidward, let's make some masterpieces together, maybe we can paint a portrait of a jellyfish!", "Gemma Few-shot": "SpongeBob: Ooh, art! Can we paint jellyfish with glitter and bubblegum, Squidward?!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, art is the BEST thing EVER, and I want to learn EVERYTHING about it, like, right now!", "Qwen Zero-shot": "SpongeBob: Oh, Squidward, I would love to learn art, but I think you might be mistaken because I am actually a sponge and I cannot use a pencil!", "Qwen Few-shot": "SpongeBob: Oh, Squidward, that sounds absolutely wonderful!", "Qwen System+Few-shot": "SpongeBob: Of course I do, Squidward, because art is the most wonderful thing ever!"}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.5}}, {"character": "SpongeBob", "question": "Mr. Krabs: From now on, the Krusty Krab is open 24 hours a day.", "gold_standard": "SpongeBob: Wow! Now we never have to stop working!", "responses": {"Gemma Zero-shot": "SpongeBob: Oh boy, that's fantastic, Mr. Krabs, we can serve Krabby Patties to jellyfish all night long!", "Gemma Few-shot": "SpongeBob: Wowee! That’s the bestest news ever, Mr. Krabs, we can have Krabby Patties all day and all night?!", "Gemma System+Few-shot": "SpongeBob: Wowee! That’s the best news ever, Mr. Krabs, we can make Krabby Patties all night long!", "Qwen Zero-shot": "SpongeBob: That's fantastic news, Mr. Krabs, because I can't wait to serve customers all night long!", "Qwen Few-shot": "SpongeBob: Twenty-four hours?! That means I can make a Krabby Patty for my lunch break, too!", "Qwen System+Few-shot": "SpongeBob: Twenty-four hours?! That's fantastic news, Mr. Krabs!"}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "SpongeBob", "question": "Mr. Krabs: Now, if we could only get rid of Squidward.", "gold_standard": "SpongeBob: Good one, sir.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh barnacles, Mr. Krabs, you don't mean it – wouldn't that be terribly, terribly sad for everyone?!", "Gemma Few-shot": "SpongeBob: Oh, Mr. Krabs, you want to get rid of Squidward? That sounds like a super-duper, totally-not-a-bad-idea adventure!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Mr. Krabs, you don’t mean it!?!", "Qwen Zero-shot": "SpongeBob: That's a terrible idea, Mr. Krabs, because Squidward is the only one who knows how to play the clarinet and make us laugh!", "Qwen Few-shot": "SpongeBob: Oh, Mr. Krabs, that's a terrible idea because Squidward is the only one who knows how to make the perfect jellyfishing song!", "Qwen System+Few-shot": "SpongeBob: Oh no, Mr. Krabs, Squidward is the most important part of the Krusty Krab team!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 4.5, "Qwen Zero-shot": 4.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 5.0}}, {"character": "SpongeBob", "question": "Mr. Krabs: The point is, sometimes you have to set things free even though it’s hard. (points to Mystery) Look at her. She misses the great outdoors, the wide-open spaces, the rolling green pastures. The kitchen is no place for a live horse. (two customers spit out their patties)", "gold_standard": "SpongeBob: Alright, Mr. Krabs, I understand. OK, girl, you’re free to go.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh gee, Mr. Krabs, that sounds like a really, really sad situation for Mystery, and I'm sure she just wants to gallop around like a super speedy pony!", "Gemma Few-shot": "SpongeBob: Ooh, a horse! Can we give her a Krabby Patty and a bubble bath, Squidward?!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, a real live horse! Can we give her a Krabby Patty and a bubble bath, Mr. Krabs?!", "Qwen Zero-shot": "SpongeBob: Mr. Krabs, please don't throw out Mystery, because she's the best friend I've ever had!", "Qwen Few-shot": "SpongeBob: Oh no, Mr. Krabs, I never thought a horse could fit in a kitchen, but I hope she doesn't eat all the mayonnaise!", "Qwen System+Few-shot": "SpongeBob: Oh my gosh, Mr. Krabs, that Mystery horse is just too cute to let go, even if she does need a proper pasture instead of a patty!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 2.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 2.0}}, {"character": "SpongeBob", "question": "Mr. Krabs: Perhaps, one of our more loyal workers can enlighten you on company policy.", "gold_standard": "SpongeBob: \"The Krusty Krab Employee Manual; 2nd Revised Edition; Page 35; Section 19; Clause 3a, states: All staff must remain on the premises until the day’s receipts are fully accounted for.\"", "responses": {"Gemma Zero-shot": "SpongeBob: Oh boy, oh boy, oh boy! Let me tell you, the policy is to always be happy and helpful, like a sunshine-y sponge!", "Gemma Few-shot": "SpongeBob: Ooh, like, can you tell me if I can wear my jellyfishing net as a hat, Mr. Krabs?!", "Gemma System+Few-shot": "SpongeBob: Oh boy, Mr. Krabs, can I help you learn about company policy, and maybe we can make it a super fun game?!", "Qwen Zero-shot": "SpongeBob: Oh, I think I know the rules just fine, but I'll let Mr. Krabs explain them to you!", "Qwen Few-shot": "SpongeBob: Oh, Mr. Krabs, I don't need to know the policy, I just need to know if I can keep my name tag!", "Qwen System+Few-shot": "SpongeBob: Mr. Krabs, surely you have a rule about what happens when someone tries to choke me!"}, "scores": {"Gemma Zero-shot": 2.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 3.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 1.5}}, {"character": "SpongeBob", "question": "Squidward: Mistake? Ha! The only mistake I ever made was wasting my life at the Krusty Krab!", "gold_standard": "SpongeBob: But a visit to the Krusty Krab makes everyone happy. And what could be better than serving up smiles? (smiles really big)", "responses": {"Gemma Zero-shot": "SpongeBob: Oh, gee, Squidward, you’re just saying that 'cause you haven't had any jellyfishing today, which is *totally* a mistake!", "Gemma Few-shot": "SpongeBob: Oh, Squidward, you’re being a grumpy-pants, and that’s *really* terrible!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, you’re so dramatic – that’s like, the best mistake ever, because it means you’re thinking about art!", "Qwen Zero-shot": "SpongeBob: That's absolutely not true, Squidward, because you're the best fry cook in Bikini Bottom and you're always smiling!", "Qwen Few-shot": "SpongeBob: Oh no, Squidward, that is the worst mistake ever made in the history of the Krusty Krab!", "Qwen System+Few-shot": "SpongeBob: Oh no, Squidward, you can't just give up on your art and your friends, because life is full of fun surprises waiting for you!"}, "scores": {"Gemma Zero-shot": 3.0, "Gemma Few-shot": 3.0, "Gemma System+Few-shot": 2.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 1.0, "Qwen System+Few-shot": 2.0}}, {"character": "SpongeBob", "question": "Squidward: It’s really nice of you to help me in my time of need.", "gold_standard": "SpongeBob: It’s no trouble. Is there anything else I can do for you...winner?", "responses": {"Gemma Zero-shot": "SpongeBob: Oh, you betcha, Squidward, it’s my absolute *favorite* thing to do – spreading joy and assisting grumpy artists!", "Gemma Few-shot": "SpongeBob: Oh boy, Squidward, you’re the bestest friend a porous guy could ask for, and I’m gonna give you a super-duper hug!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Squidward, you’re the bestest friend a sponge could ever have, and I’m so, so happy you’re helping me find my name tag!", "Qwen Zero-shot": "SpongeBob: You're very welcome, Squidward, because helping friends is what I do best!", "Qwen Few-shot": "SpongeBob: I'm just happy to be of service, Squidward!", "Qwen System+Few-shot": "SpongeBob: Oh, thank you, Squidward, you're the kindest friend I have, ever!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 4.5, "Gemma System+Few-shot": 2.0, "Qwen Zero-shot": 5.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 3.0}}, {"character": "SpongeBob", "question": "Squidward: I can’t believe I’m saying this, but SpongeBob, you’re going to have to be the waiter.", "gold_standard": "SpongeBob: What’s that?", "responses": {"Gemma Zero-shot": "SpongeBob: Oh boy, oh boy, oh boy! A chance to shine and serve the best Krabby Patties this side of Bikini Bottom?!", "Gemma Few-shot": "SpongeBob: Wowee! A waiter?! Can I wear a little hat and serve Krabby Patties to everyone, Squidward?!", "Gemma System+Few-shot": "SpongeBob: Wowee! A waiter?! That’s the best job EVER, Squidward, I’ll make everyone so happy with my super-duper, extra-special Krabby Patties!", "Qwen Zero-shot": "SpongeBob: I would love to be the waiter, but I think I'm too busy serving my customers to have a job serving them!", "Qwen Few-shot": "SpongeBob: Yes, Squidward, I am honored to serve you with my very best sponge-fried shrimp!", "Qwen System+Few-shot": "SpongeBob: Yay! Finally, a moment to serve Krabby Patties and make everyone happy!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 5.0, "Gemma System+Few-shot": 5.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 5.0}}, {"character": "SpongeBob", "question": "Squidward: Yes, they do that! Now listen, Squilliam is on his way and you have less than twenty minutes to become a fancy waiter, so read this.", "gold_standard": "SpongeBob: \"How To Become A Fancy Waiter in Less Than 20 Minutes.\" Don’t worry Squidward, I’ll memorize every page, right down to the punctuation marks.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh boy, oh boy, oh boy! Let's do it, Squidward, I'm ready to be the fanciest waiter this side of Bikini Bottom!", "Gemma Few-shot": "SpongeBob: Ooh, a fancy waiter! Can I wear a sparkly bow tie and serve Krabby Patties with extra pickles?!", "Gemma System+Few-shot": "SpongeBob: Ooh, a fancy waiter! Can I wear a sparkly bow tie and serve Krabby Patties with extra pickles?!", "Qwen Zero-shot": "SpongeBob: Oh wow, I can't wait to serve the most fancy food in the Krusty Krab to Squilliam!", "Qwen Few-shot": "SpongeBob: Oh no, I forgot to practice my fancy French phrases!", "Qwen System+Few-shot": "SpongeBob: Oh no, Squilliam is here! I'll read it, but please tell me this is a joke because I'm already a fancy waiter at the Krusty Krab!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 4.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 2.0}}, {"character": "SpongeBob", "question": "Mr. Krabs: I couldn’t help overhearing your big plans. And I was wondering if you had room for one more craaaaazy dude tonight, huh?", "gold_standard": "SpongeBob: Of course. Did you wanna come with us, Mr. Krabs?", "responses": {"Gemma Zero-shot": "SpongeBob: Oh, you bet your barnacle-covered bottom, Mr. Krabs, there’s always room for a little crazy fun with you!", "Gemma Few-shot": "SpongeBob: Oh boy, Mr. Krabs, are you inviting me to a super-duper secret mission?!", "Gemma System+Few-shot": "SpongeBob: Oh my gosh, Mr. Krabs, you want to join our super-duper secret mission?!", "Qwen Zero-shot": "SpongeBob: I would love to join you, Mr. Krabs, as long as you promise not to try to sell me your entire inventory at a bargain price!", "Qwen Few-shot": "SpongeBob: Oh Mr. Krabs, I think you're mistaken, because I'm already guarding SpongeBob SquarePants!", "Qwen System+Few-shot": "SpongeBob: Mr. Krabs, that sounds like a fantastic idea for a super special night at the Krusty Krab!"}, "scores": {"Gemma Zero-shot": 5.0, "Gemma Few-shot": 3.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 1.0, "Qwen System+Few-shot": 3.0}}, {"character": "SpongeBob", "question": "Squidward: SpongeBob, it’s not camping if you’re ten feet from your house.", "gold_standard": "SpongeBob: Aww, it doesn’t matter where you are as long as you’re outdoors. While all those soft city folk are safe in their beds reading books, we’re out here, pitting ourselves against the formidable forces of nature. You wanna join us?", "responses": {"Gemma Zero-shot": "SpongeBob: Oh, but Squidward, camping is about being *close* to nature and having a super-duper awesome time, even if it's just a little bit away from my pineapple!", "Gemma Few-shot": "SpongeBob: Oh, but Squidward, wouldn't it be super exciting to find my name tag on a grand adventure, like a treasure hunt?!", "Gemma System+Few-shot": "SpongeBob: Camping?! Oh boy, oh boy, oh boy, let’s build a fort out of jellyfishing nets and seaweed, Squidward!", "Qwen Zero-shot": "SpongeBob: That's absolutely not true because the best part of camping is getting so close to the ocean that you can hear the waves crash right next to your tent!", "Qwen Few-shot": "SpongeBob: But Squidward, being ten feet away is just the perfect amount of adventure for a night of spooky camping!", "Qwen System+Few-shot": "SpongeBob: But Squidward, ten feet is still close enough to feel the fresh, crisp, adventurous air of the outdoors!"}, "scores": {"Gemma Zero-shot": 4.0, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 4.0, "Qwen System+Few-shot": 4.0}}, {"character": "SpongeBob", "question": "SpongeBob: Okay. Have fun inside. (Squidward leaves then comes back)\n\nSquidward: What do you mean, \"have fun inside\"?", "gold_standard": "SpongeBob: Just...have fun inside. See you tomorrow.", "responses": {"Gemma Zero-shot": "SpongeBob: Oh my gosh, Squidward, I just meant it's a really, REALLY good day for jellyfishing, and I was hoping you'd join me, but... well, you know how you are!", "Gemma Few-shot": "SpongeBob: I just meant, like, maybe you could bring me a Krabby Patty when you’re done, Squidward?", "Gemma System+Few-shot": "SpongeBob: I just meant I was playing with my jellyfishing net, Squidward, and it was super duper exciting!", "Qwen Zero-shot": "SpongeBob: I meant that you should stay in your room and not go outside, but I guess you just didn't hear me!", "Qwen Few-shot": "SpongeBob: I meant that once you're inside the house, you'll have a wonderful time exploring all my new decorations!", "Qwen System+Few-shot": "SpongeBob: I meant to say \"have fun inside\" the Krusty Krab!"}, "scores": {"Gemma Zero-shot": 4.5, "Gemma Few-shot": 2.0, "Gemma System+Few-shot": 4.0, "Qwen Zero-shot": 2.0, "Qwen Few-shot": 2.0, "Qwen System+Few-shot": 2.0}}];
+
+let currentChar = 'Squidward';
+let pool = [];
+let seen = [];
+let current = null;
+
+function getPool(char) {
+  return DATA.filter(d => d.character === char);
+}
+
+function selectChar(char) {
+  currentChar = char;
+  document.querySelectorAll('.char-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.char === char);
+  });
+  pool = getPool(char);
+  seen = [];
+  shuffle();
+}
+
+function shuffle() {
+  if (seen.length === pool.length) seen = [];
+  const remaining = pool.filter((_, i) => !seen.includes(i));
+  const idx = Math.floor(Math.random() * remaining.length);
+  const originalIdx = pool.indexOf(remaining[idx]);
+  seen.push(originalIdx);
+  current = pool[originalIdx];
+  render();
+}
+
+function scoreColor(s) {
+  if (s >= 4.5) return '#51cf66';
+  if (s >= 3.5) return '#94d82d';
+  if (s >= 2.5) return '#fcc419';
+  if (s >= 1.5) return '#ff922b';
+  return '#ff6b6b';
+}
+
+function render() {
+  const card = document.getElementById('main-card');
+  card.classList.remove('animate-in');
+  void card.offsetWidth;
+  card.classList.add('animate-in');
+
+  document.getElementById('episode-label').textContent =
+    `${currentChar} · Example ${seen.length} of ${pool.length}`;
+  document.getElementById('counter').textContent = `${seen.length}/${pool.length}`;
+  document.getElementById('question-text').textContent = current.question;
+  document.getElementById('gold-text').textContent = current.gold_standard;
+
+  const techniques = [
+    ['Gemma', 'Zero-shot'],
+    ['Gemma', 'Few-shot'],
+    ['Gemma', 'System+Few-shot'],
+    ['Qwen',  'Zero-shot'],
+    ['Qwen',  'Few-shot'],
+    ['Qwen',  'System+Few-shot'],
+  ];
+
+  const grid = document.getElementById('responses-grid');
+  grid.innerHTML = '';
+
+  techniques.forEach(([model, tech]) => {
+    const key = `${model} ${tech}`;
+    const response = current.responses[key];
+    const score = current.scores[key];
+    const color = scoreColor(score);
+    const modelClass = model.toLowerCase();
+
+    const card = document.createElement('div');
+    card.className = 'response-card animate-in';
+    card.innerHTML = `
+      <div class="response-header">
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span class="model-tag ${modelClass}">${model}</span>
+          <span class="tech-tag">${tech}</span>
+        </div>
+        <div class="score-badge">
+          <div class="score-pip" style="background:${color}"></div>
+          <span style="color:${color}">${score.toFixed(1)}</span>
+        </div>
+      </div>
+      <div class="response-text">${response}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Init
+pool = getPool(currentChar);
+shuffle();
+</script>
+</body>
+</html>
