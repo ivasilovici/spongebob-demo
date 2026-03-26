@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpongeBob Role-Playing — LLM Demo</title>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
     --sq: #4A90D9;
@@ -322,6 +323,234 @@
     font-size: 0.75rem;
     color: var(--muted);
   }
+
+  /* Battle mode */
+  .battle-section {
+    margin-top: 3rem;
+    border-top: 1px solid var(--border);
+    padding-top: 2.5rem;
+  }
+
+  .battle-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .battle-title {
+    font-family: 'Bangers', cursive;
+    font-size: 2.2rem;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+  }
+
+  .battle-subtitle {
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+
+  .battle-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .battle-question {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+
+  .battle-q-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  .battle-q-text {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .battle-arena {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .battle-side {
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 3px solid transparent;
+    position: relative;
+  }
+
+  .battle-side:first-child {
+    border-right: 1px solid var(--border);
+  }
+
+  .battle-side:hover {
+    background: rgba(255,255,255,0.04);
+  }
+
+  .battle-side.voted-win {
+    background: rgba(81,207,102,0.08);
+    border-color: #51cf66;
+  }
+
+  .battle-side.voted-lose {
+    background: rgba(255,107,107,0.05);
+    border-color: rgba(255,107,107,0.2);
+    opacity: 0.6;
+  }
+
+  .battle-side-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .battle-response-text {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+
+  .battle-vote-btn {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .battle-vote-btn:hover {
+    background: var(--border);
+  }
+
+  .battle-reveal {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    background: var(--card);
+    display: none;
+  }
+
+  .battle-reveal.show { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+
+  .battle-reveal-tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .battle-next-btn {
+    padding: 0.5rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .battle-next-btn:hover { background: var(--border); }
+
+  .battle-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .battle-end-btn {
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    border: 1px solid rgba(245,197,24,0.4);
+    background: rgba(245,197,24,0.08);
+    color: var(--gold);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .battle-end-btn:hover { background: rgba(245,197,24,0.15); }
+  .battle-end-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .battle-progress {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.75rem;
+  }
+
+  /* Results chart */
+  .battle-results {
+    display: none;
+    margin-top: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+  }
+
+  .battle-results.show { display: block; }
+
+  .results-title {
+    font-family: 'Bangers', cursive;
+    font-size: 1.6rem;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+  }
+
+  .results-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 280px;
+    margin-bottom: 1rem;
+  }
+
+  .results-note {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .battle-arena { grid-template-columns: 1fr; }
+    .battle-side:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+  }
 </style>
 </head>
 <body>
@@ -364,6 +593,59 @@
   </div>
 
   <div class="responses-grid" id="responses-grid"></div>
+
+  <!-- ⚔️ BATTLE MODE -->
+  <div class="battle-section">
+    <div class="battle-header">
+      <div class="battle-title">⚔️ Battle Mode</div>
+      <p class="battle-subtitle">Which response feels more in character? Vote and see the results at the end.</p>
+    </div>
+
+    <div class="battle-card" id="battle-card">
+      <div class="battle-question">
+        <div class="battle-q-label">Dialogue</div>
+        <div class="battle-q-text" id="battle-q-text"></div>
+      </div>
+      <div class="battle-arena">
+        <div class="battle-side" id="battle-side-a" onclick="vote('A')">
+          <div class="battle-side-label">
+            <span style="font-size:1.1rem">🅰️</span>
+            <span style="color:var(--muted)">Response A</span>
+          </div>
+          <div class="battle-response-text" id="battle-text-a"></div>
+          <button class="battle-vote-btn" id="btn-a">👍 This one feels more in character</button>
+        </div>
+        <div class="battle-side" id="battle-side-b" onclick="vote('B')">
+          <div class="battle-side-label">
+            <span style="font-size:1.1rem">🅱️</span>
+            <span style="color:var(--muted)">Response B</span>
+          </div>
+          <div class="battle-response-text" id="battle-text-b"></div>
+          <button class="battle-vote-btn" id="btn-b">👍 This one feels more in character</button>
+        </div>
+      </div>
+      <div class="battle-reveal" id="battle-reveal">
+        <div class="battle-reveal-tags" id="battle-reveal-tags"></div>
+        <button class="battle-next-btn" onclick="nextBattle()">Next battle ⟶</button>
+      </div>
+    </div>
+
+    <div class="battle-controls">
+      <button class="battle-end-btn" id="battle-end-btn" onclick="showResults()" disabled>
+        Show results 📊
+      </button>
+    </div>
+    <div class="battle-progress" id="battle-progress">Vote at least 3 battles to see results</div>
+
+    <div class="battle-results" id="battle-results">
+      <div class="results-title">Your votes 📊</div>
+      <div class="results-sub" id="results-sub"></div>
+      <div class="chart-container">
+        <canvas id="battleChart"></canvas>
+      </div>
+      <div class="results-note">Scores from LLM judges shown for comparison (1–5 scale)</div>
+    </div>
+  </div>
 
   <footer>
     <div>Responses generated by <strong>Gemma 4B</strong> and <strong>Qwen 4B</strong> · Scores averaged from two LLMs as judges (rates 1–5)</div>
@@ -462,7 +744,220 @@ function render() {
   });
 }
 
-// Init
+// ── BATTLE MODE ──────────────────────────────────────────────────────────────
+const TECHNIQUES = [
+  'Gemma Zero-shot', 'Gemma Few-shot', 'Gemma System+Few-shot',
+  'Qwen Zero-shot',  'Qwen Few-shot',  'Qwen System+Few-shot',
+];
+
+// Pairs to battle: always Gemma vs Qwen for same technique index
+const PAIRS = [
+  ['Gemma Zero-shot',       'Qwen Zero-shot'],
+  ['Gemma Few-shot',        'Qwen Few-shot'],
+  ['Gemma System+Few-shot', 'Qwen System+Few-shot'],
+];
+
+let battlePool = [];
+let battleSeen = [];
+let battleCurrent = null;
+let battleVotes = {}; // { techKey: { wins: 0, total: 0 } }
+let battleVoted = false;
+let battleCount = 0;
+
+TECHNIQUES.forEach(t => { battleVotes[t] = { wins: 0, total: 0 }; });
+
+function buildBattlePool() {
+  const pool = [];
+  DATA.forEach(item => {
+    PAIRS.forEach(([techA, techB]) => {
+      pool.push({ item, techA, techB });
+    });
+  });
+  return pool;
+}
+
+function nextBattle() {
+  if (battlePool.length === 0) battlePool = buildBattlePool();
+  if (battleSeen.length === battlePool.length) battleSeen = [];
+
+  const remaining = battlePool.filter((_, i) => !battleSeen.includes(i));
+  const idx = Math.floor(Math.random() * remaining.length);
+  const origIdx = battlePool.indexOf(remaining[idx]);
+  battleSeen.push(origIdx);
+  battleCurrent = battlePool[origIdx];
+  battleVoted = false;
+
+  // Randomize which side A/B
+  const flip = Math.random() > 0.5;
+  battleCurrent.sideA = flip ? battleCurrent.techA : battleCurrent.techB;
+  battleCurrent.sideB = flip ? battleCurrent.techB : battleCurrent.techA;
+
+  renderBattle();
+}
+
+function renderBattle() {
+  const { item, sideA, sideB } = battleCurrent;
+  document.getElementById('battle-q-text').textContent = item.question;
+  document.getElementById('battle-text-a').textContent = item.responses[sideA];
+  document.getElementById('battle-text-b').textContent = item.responses[sideB];
+
+  document.getElementById('battle-side-a').className = 'battle-side';
+  document.getElementById('battle-side-b').className = 'battle-side';
+  document.getElementById('battle-reveal').className = 'battle-reveal';
+  document.getElementById('btn-a').disabled = false;
+  document.getElementById('btn-b').disabled = false;
+
+  document.getElementById('battle-q-text').closest('.battle-question').style.borderLeft = '';
+}
+
+function vote(side) {
+  if (battleVoted) return;
+  battleVoted = true;
+  battleCount++;
+
+  const { item, sideA, sideB } = battleCurrent;
+  const winner = side === 'A' ? sideA : sideB;
+  const loser  = side === 'A' ? sideB : sideA;
+
+  // Record votes
+  battleVotes[winner].wins++;
+  battleVotes[winner].total++;
+  battleVotes[loser].total++;
+
+  // Visual feedback
+  document.getElementById(`battle-side-${side.toLowerCase()}`).classList.add('voted-win');
+  document.getElementById(`battle-side-${side === 'A' ? 'b' : 'a'}`).classList.add('voted-lose');
+  document.getElementById('btn-a').disabled = true;
+  document.getElementById('btn-b').disabled = true;
+
+  // Reveal
+  const reveal = document.getElementById('battle-reveal');
+  reveal.className = 'battle-reveal show';
+  const scoreA = item.scores[sideA];
+  const scoreB = item.scores[sideB];
+
+  document.getElementById('battle-reveal-tags').innerHTML = `
+    <span class="model-tag ${sideA.startsWith('Gemma') ? 'gemma' : 'qwen'}" style="padding:0.3rem 0.7rem;border-radius:8px">
+      🅰️ ${sideA} · Judge: ${scoreA.toFixed(1)}
+    </span>
+    <span class="model-tag ${sideB.startsWith('Gemma') ? 'gemma' : 'qwen'}" style="padding:0.3rem 0.7rem;border-radius:8px">
+      🅱️ ${sideB} · Judge: ${scoreB.toFixed(1)}
+    </span>
+  `;
+
+  // Enable results button after 3 votes
+  if (battleCount >= 3) {
+    document.getElementById('battle-end-btn').disabled = false;
+    document.getElementById('battle-progress').textContent =
+      `${battleCount} battles voted · Click "Show results" anytime`;
+  } else {
+    document.getElementById('battle-progress').textContent =
+      `${battleCount}/3 battles voted`;
+  }
+}
+
+function showResults() {
+  const resultsEl = document.getElementById('battle-results');
+  resultsEl.className = 'battle-results show';
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const labels = TECHNIQUES;
+  const winRates = labels.map(t => {
+    const v = battleVotes[t];
+    return v.total > 0 ? Math.round((v.wins / v.total) * 100) : 0;
+  });
+  const judgeScores = labels.map(t => {
+    const vals = DATA.map(d => d.scores[t]).filter(Boolean);
+    return vals.length ? Math.round((vals.reduce((a,b) => a+b, 0) / vals.length) * 10) / 10 : 0;
+  });
+
+  const total = Object.values(battleVotes).reduce((s, v) => s + v.total, 0) / 2;
+  document.getElementById('results-sub').textContent =
+    `Based on your ${battleCount} votes · Win rate = % of times you preferred this technique`;
+
+  const colors = {
+    'Gemma Zero-shot':       '#4A90D9',
+    'Gemma Few-shot':        '#7dc4ff',
+    'Gemma System+Few-shot': '#b3d9ff',
+    'Qwen Zero-shot':        '#51cf66',
+    'Qwen Few-shot':         '#74d98a',
+    'Qwen System+Few-shot':  '#a8f0b8',
+  };
+
+  const bgColors = labels.map(l => colors[l] + 'cc');
+  const borderColors = labels.map(l => colors[l]);
+
+  if (window._battleChart) window._battleChart.destroy();
+
+  window._battleChart = new Chart(document.getElementById('battleChart'), {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => l.replace(' ', '\n')),
+      datasets: [
+        {
+          label: 'Your vote win rate (%)',
+          data: winRates,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: 2,
+          borderRadius: 6,
+          yAxisID: 'y',
+        },
+        {
+          label: 'LLM Judge score (1–5)',
+          data: judgeScores,
+          type: 'line',
+          borderColor: '#F5C518',
+          backgroundColor: 'rgba(245,197,24,0.1)',
+          pointBackgroundColor: '#F5C518',
+          pointRadius: 5,
+          borderWidth: 2,
+          yAxisID: 'y2',
+          tension: 0.3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#e8f0fe', font: { size: 11 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.datasetIndex === 0
+              ? ` Win rate: ${ctx.parsed.y}%`
+              : ` Judge score: ${ctx.parsed.y.toFixed(1)}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#7a9cc0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: {
+          position: 'left',
+          min: 0, max: 100,
+          ticks: { color: '#7a9cc0', callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          title: { display: true, text: 'Win rate (%)', color: '#7a9cc0', font: { size: 10 } }
+        },
+        y2: {
+          position: 'right',
+          min: 1, max: 5,
+          ticks: { color: '#F5C518' },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Judge score', color: '#F5C518', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// Init battle
+battlePool = buildBattlePool();
+nextBattle();
+
+// Init explore
 pool = getPool(currentChar);
 shuffle();
 </script>
